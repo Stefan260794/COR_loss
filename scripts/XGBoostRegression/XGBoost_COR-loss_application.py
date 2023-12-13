@@ -1,11 +1,6 @@
-#
-# https://machinelearningmastery.com/results-for-standard-classification-and-regression-machine-learning-datasets/
+### Application with early stopping, CV and hypertuning for both datasets
 
-# mit early stopping and CV and hypertuning
-# split train, val und test
-# normalized
-
-# %%
+# packages
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -19,18 +14,15 @@ from hyperopt import STATUS_OK, Trials, fmin, hp, tpe, early_stop
 from time import time
 from sklearn.metrics import mean_absolute_error, accuracy_score, f1_score
 
-# from utils.gradientBoosting import GradientBooster
-
-# %%
+###
 # regression mlp model for the abalone dataset
 # load dataset
 url = 'https://raw.githubusercontent.com/jbrownlee/Datasets/master/'
 data_set = 'ames.csv'
 # data_set = 'housing.csv'
 
-#%%
 if data_set == 'ames.csv':
-    ames = pd.read_csv(r'C:\Users\AdminRBG.SSt\source\repos\amsOS_PPC_FEST\Real_dummyData\AmesHousing.csv')
+    ames = pd.read_csv(r'.\Repository\COR_loss_paper\COR_loss\data\AmesHousing.csv')
     y = ames.SalePrice.copy() / 1000.0
     X = ames.drop('SalePrice', axis=1).copy()
     # Remove columns with NaN or Inf values
@@ -44,7 +36,7 @@ else:
     X, y = dataframe.iloc[:, :-1], dataframe.iloc[:, -1]
     n_features = X.shape[1]
 
-#%%
+###
 # define grid
 if data_set == 'ames.csv':
     grid = [0,100,250,500,800] # grid for housing
@@ -63,10 +55,10 @@ grid_arr = np.array([grid, np.array(range(1,len(grid)+1)).tolist()]) # , class_n
 y_df = pd.DataFrame({'val': y}) # all data
 y_df['trCL'] = (grid_arr[1][np.digitize(y_df.val, grid_arr[0])].astype(int)-1).astype(str)
 
-# -------------
+# Get Distribution
 # x range gamma
 x_gamma = np.linspace(0, max(grid), int(y_df.val.shape[0]*1.1))
-# get gamma dist of y
+# get gamma distribution of y
 param = stats.gamma.fit(y_df.val, floc=0)
 pdf_fitted = stats.gamma.pdf(x_gamma, *param)
 
@@ -74,16 +66,15 @@ if data_set == 'ames.csv':
     a = 6; b = 40; c = 800
 else:
     a = 3; b = 9; c = 80
-    # a = 3; b = 7; c = 60
 
-# define expertise as gamma dist
+# define expertise as gamma distribution
 y_gamma = stats.gamma.pdf(x_gamma, a, 0, b) 
 # random samples from distribution
-rng = np.random.default_rng(123) # <---------------------------------------- SEED
+rng = np.random.default_rng(123)
 y_rs = rng.gamma(a, b, size=int(y_df.val.shape[0]*1.1))
 
-# add gen-data to true data
-df = pd.concat([X, y_df], axis=1) # split data together to stratify with trCL and genCL
+# add generated data to true data
+df = pd.concat([X, y_df], axis=1)
 df = df.sort_values(by='val')
 
 # filter for random samples in given range
@@ -91,11 +82,10 @@ geny = y_rs[y_rs > grid[1]]
 geny = geny[geny < grid[-2]][:len(y)] # reduce sample size to the same size as y and without values out of given x-Grid-range
 geny = np.sort(geny)
 
-# add gen data to dataframe
 df['geny'] = geny
 df['genCL'] = (grid_arr[1][np.digitize(df.geny, grid_arr[0])].astype(int)-1).astype(str)
 
-# show overlapping ratio
+# Plot overlapping ratio
 temp = pd.DataFrame()
 temp['trCL'] = df.trCL.astype(str)
 temp['genCL'] = df.genCL.astype(str)
@@ -111,15 +101,12 @@ ax1.hist(df.val, density=True, alpha=0.4)
 ax1.hist(df.geny, density=True, alpha=0.4)
 ax2.hist(df.trCL, density=True, alpha=0.4)
 ax2.hist(df.genCL, density=True, alpha=0.4)
-# plt.show()
+plt.show()
 
-#%% 
 # make key for stratified split
 df['key'] = df.genCL # df.groupby('key').count() # check for class combinations
 df_train, df_test = train_test_split(df, test_size=0.33, random_state=42, stratify=df['key']) # <---------------------------------------- SEED
 
-#%% 
-# https://datascience.stackexchange.com/questions/74780/how-to-implement-custom-loss-function-that-has-more-parameters-with-xgbclassifie
 # functions
 
 def COR_loss(y_df, alpha): # possibly add subsample ratio 
@@ -168,11 +155,14 @@ def objective(space):
 
     mod=XGBRegressor(
                     objective = loss_fct_val,
-                    n_estimators = int(space['n_estimators']), max_depth = int(space['max_depth']), # gamma = space['gamma'],
-                    reg_lambda=int(space['reg_lambda']), # reg_alpha = int(space['reg_alpha']),
-                    min_child_weight=int(space['min_child_weight']), colsample_bytree=int(space['colsample_bytree']),
-                    learning_rate=space['learning_rate'], # subsample=space['subsample'],
-                    early_stopping_rounds=early_stop_no, eval_metric=eval_metric1 # 'mae'
+                    n_estimators = int(space['n_estimators']), 
+                    max_depth = int(space['max_depth']),
+                    reg_lambda=int(space['reg_lambda']),
+                    min_child_weight=int(space['min_child_weight']),
+                    olsample_bytree=int(space['colsample_bytree']),
+                    learning_rate=space['learning_rate'],
+                    early_stopping_rounds=early_stop_no, 
+                    eval_metric=eval_metric1
                     )
     
     evaluation = [(X_train, y_train.val), (X_val, y_val.val)]
@@ -187,18 +177,17 @@ def objectiveCLF(space):
     obj = eval_ = 'mlogloss'
 
     mod=XGBClassifier(
-                    objective = obj, # 'mlogloss', # 'binary:logistic', # 'multi:softmax', # 'roc_auc' #  
-                    n_estimators = int(space['n_estimators']), max_depth = int(space['max_depth']), # gamma = space['gamma'],
-                    # reg_lambda=int(space['reg_lambda']), # reg_alpha = int(space['reg_alpha']), 
+                    objective = obj, 
+                    n_estimators = int(space['n_estimators']), max_depth = int(space['max_depth']),
                     min_child_weight=int(space['min_child_weight']),
                     colsample_bytree=int(space['colsample_bytree']),
-                    learning_rate=space['learning_rate'], # subsample=space['subsample'],
+                    learning_rate=space['learning_rate'],
                     eval_metric=eval_, early_stopping_rounds=5
                     )
     
     sample_weights = compute_sample_weight(
         class_weight='balanced',
-        y=y_train_clf['genCL'] #provide your own target name
+        y=y_train_clf['genCL']
     )
 
     evaluation = [(X_train, y_train_clf.genCL), (X_val, y_val_clf.genCL)]
@@ -208,7 +197,6 @@ def objectiveCLF(space):
     return {'loss': 1-f1, 'status': STATUS_OK}
 
 
-# --------------------------------------------------------------------------------
 # separate dataset in train and validation - 5-fold_CV
 df_train_shuffled = df_train.sample(frac=1, random_state=123).reset_index(drop=True).copy()
 df_test_shuffled = df_test.sample(frac=1, random_state=123).reset_index(drop=True).copy()
@@ -219,16 +207,13 @@ X_test = df_test_shuffled.drop(['val','trCL','geny','genCL','key'], axis=1).copy
 
 #%%
 # Model 
-
 dict_hyperparams = dict()
-dict_zwischenRes = dict()
+dict_cacheRes = dict()
 
 early_stop_no = 20
-
 alpha_list = [1,.75,.5,.3,.1,0.05,0,'clf']
-# alpha_list = ['clf']
 
-# Dicts
+# Dictionaries
 mae_insample_cv = []
 acc_insample_cv = []
 f1_insample_cv = []
@@ -246,27 +231,23 @@ for alpha in alpha_list:
     if alpha != 'clf':
 
         if data_set == 'housing.csv':
-            space={'max_depth': hp.quniform("max_depth", 3, 10, 1), # 20
+            space={'max_depth': hp.quniform("max_depth", 3, 10, 1),
                     'gamma': hp.uniform('gamma', 1, 9), #
-                    # 'reg_alpha' : hp.quniform('reg_alpha', 0, 80, 1),
                     'reg_lambda' : hp.uniform('reg_lambda', 0, 1),
                     'colsample_bytree' : hp.uniform('colsample_bytree', 0.5, 1),
-                    'min_child_weight' : hp.quniform('min_child_weight', 0, 15, 1), #
-                    'n_estimators': hp.quniform('n_estimators', 50, 1200, 50), # int(150/(alpha+0.1)), 20), # 1000 #  int(150/(alpha+0.1))
-                    'learning_rate': hp.uniform('learning_rate', 0.01, 0.2), #
-                    # 'subsample': hp.uniform('subsample', 0.5, 0.8), # 1
+                    'min_child_weight' : hp.quniform('min_child_weight', 0, 15, 1),
+                    'n_estimators': hp.quniform('n_estimators', 50, 1200, 50),
+                    'learning_rate': hp.uniform('learning_rate', 0.01, 0.2),
                     'seed': 0
                 }
         elif data_set == 'ames.csv':
-            space={'max_depth': hp.quniform("max_depth", 3, 10, 1), # 20
+            space={'max_depth': hp.quniform("max_depth", 3, 10, 1),
                     'gamma': hp.uniform('gamma', 1, 9), #
-                    # 'reg_alpha' : hp.quniform('reg_alpha', 0, 80, 1),
                     'reg_lambda' : hp.uniform('reg_lambda', 0, 1),
                     'colsample_bytree' : hp.uniform('colsample_bytree', 0.5, 1),
-                    'min_child_weight' : hp.quniform('min_child_weight', 0, 15, 1), #
-                    'n_estimators': hp.quniform('n_estimators', 50, 1200, 50), # int(150/(alpha+0.1)), 20), # 1000 #  int(150/(alpha+0.1))
-                    'learning_rate': hp.uniform('learning_rate', 0.01, 0.2), #
-                    # 'subsample': hp.uniform('subsample', 0.5, 0.8), # 1
+                    'min_child_weight' : hp.quniform('min_child_weight', 0, 15, 1),
+                    'n_estimators': hp.quniform('n_estimators', 50, 1200, 50),
+                    'learning_rate': hp.uniform('learning_rate', 0.01, 0.2),
                     'seed': 0
                 }
 
@@ -275,7 +256,7 @@ for alpha in alpha_list:
         f1_insample = []; f1_outsample = []
         ct = []
 
-        for k in range(5): # range(3): # 
+        for k in range(5): # 5 fold random sample CV
             
             df_train, df_val = train_test_split(df_train_shuffled, test_size=0.2, stratify=df_train_shuffled['key'])
             y_train_and_val = df_train_shuffled[['val','genCL']].copy().reset_index(drop=True)
@@ -322,43 +303,35 @@ for alpha in alpha_list:
             mae_outsample.append(mean_absolute_error(pred_outs, y_test.val)) # Mae
             f1_outsample.append(f1_score(y_test.genCL.astype(str), pred_outs_df.classes, average='weighted')*100) # f1 score
             # ----------------------------------------------------
-            dict_zwischenRes[f'alpha={alpha}_k={k}'] = {'f1_in':f1_score(y_train_and_val.genCL.astype(str), pred_ins_df.classes, average='weighted')*100, 'f1_out':f1_score(y_test.genCL.astype(str), pred_outs_df.classes, average='weighted')*100}
-            dict_zwischenRes
+            dict_cacheRes[f'alpha={alpha}_k={k}'] = {'f1_in':f1_score(y_train_and_val.genCL.astype(str), pred_ins_df.classes, average='weighted')*100, 'f1_out':f1_score(y_test.genCL.astype(str), pred_outs_df.classes, average='weighted')*100}
+            dict_cacheRes
 
         # mean of cv
         mae_insample_cv.append(np.mean(mae_insample)); mae_outsample_cv.append(np.mean(mae_outsample)); mae_outsample_cv_std.append(np.std(mae_outsample))
         acc_insample_cv.append(np.mean(acc_insample)); acc_outsample_cv.append(np.mean(acc_outsample)); acc_outsample_cv_std.append(np.std(acc_outsample))
         f1_insample_cv.append(np.mean(f1_insample)); f1_outsample_cv.append(np.mean(f1_outsample)); f1_outsample_cv_std.append(np.std(f1_outsample))
-        ct_cv.append(np.mean(ct)) #; print(f'Finish: alpha = {alpha}')
+        ct_cv.append(np.mean(ct))
 
     else: # =='clf'
 
         # Tuning domain
         if data_set == 'housing.csv':
             
-            space_clf={'max_depth': hp.quniform("max_depth", 3, 10, 1), # 20
-                # 'gamma': hp.uniform('gamma', 1, 9), #
-                # 'reg_alpha' : hp.quniform('reg_alpha', 0,80,1),
-                # 'reg_lambda' : hp.uniform('reg_lambda', 0, 1),
+            space_clf={'max_depth': hp.quniform("max_depth", 3, 10, 1),
                 'colsample_bytree' : hp.uniform('colsample_bytree', 0.5, 1),
-                'min_child_weight' : hp.quniform('min_child_weight', 0, 15, 1), #
-                'n_estimators': hp.quniform('n_estimators', 50, 1000, 50), # 1000
-                'learning_rate': hp.uniform('learning_rate', 0.01, 0.2), #
-                # 'subsample': hp.uniform('subsample', 0.5, 0.8), # 1
+                'min_child_weight' : hp.quniform('min_child_weight', 0, 15, 1),
+                'n_estimators': hp.quniform('n_estimators', 50, 1000, 50),
+                'learning_rate': hp.uniform('learning_rate', 0.01, 0.2),
                 'seed': 0
             }
 
         elif data_set == 'ames.csv':
             
-            space_clf={'max_depth': hp.quniform("max_depth", 3, 10, 1), # 20
-                # 'gamma': hp.uniform('gamma', 1, 9), #
-                # 'reg_alpha' : hp.quniform('reg_alpha', 0,80,1),
-                # 'reg_lambda' : hp.uniform('reg_lambda', 0, 1),
+            space_clf={'max_depth': hp.quniform("max_depth", 3, 10, 1),            
                 'colsample_bytree' : hp.uniform('colsample_bytree', 0.5, 1),
-                'min_child_weight' : hp.quniform('min_child_weight', 0, 15, 1), #
-                'n_estimators': hp.quniform('n_estimators', 50, 1000, 50), # 1000
-                'learning_rate': hp.uniform('learning_rate', 0.01, 0.2), #
-                # 'subsample': hp.uniform('subsample', 0.5, 0.8), # 1
+                'min_child_weight' : hp.quniform('min_child_weight', 0, 15, 1), 
+                'n_estimators': hp.quniform('n_estimators', 50, 1000, 50),
+                'learning_rate': hp.uniform('learning_rate', 0.01, 0.2),
                 'seed': 0
             }
                         
@@ -367,7 +340,7 @@ for alpha in alpha_list:
         f1_insample = []; f1_outsample = []
         ct = []
 
-        for k in range(5): # range(3): # 
+        for k in range(5):
 
             df_train, df_val = train_test_split(df_train_shuffled, test_size=0.2, stratify=df_train_shuffled['key'])
             y_train_and_val = df_train_shuffled[['val','genCL']].copy().reset_index(drop=True)
@@ -399,12 +372,11 @@ for alpha in alpha_list:
             dict_hyperparams[f'alpha={alpha}_k={k}'] = best_hyperparams
 
             mod = XGBClassifier(**best_hyperparams)
-            # mod = XGBClassifier()
             sample_weights = compute_sample_weight(
                 class_weight='balanced',
                 y= y_train_and_val_clf['genCL'] #provide your own target name
             )
-            mod.fit(X_train_and_val, y_train_and_val_clf.genCL, sample_weight=sample_weights, verbose=False) # change here to train_and_val           
+            mod.fit(X_train_and_val, y_train_and_val_clf.genCL, sample_weight=sample_weights, verbose=False)           
             y_train_and_val_clf['predCL'] = mod.predict(X_train_and_val)
             y_test_clf['predCL'] = mod.predict(X_test)
 
@@ -412,11 +384,11 @@ for alpha in alpha_list:
             # ----------------------------------------------------
             # Metrics insample
             acc_insample.append(accuracy_score(y_train_and_val_clf.genCL, y_train_and_val_clf.predCL)*100) # Accuracy
-            mae_insample.append(np.NaN) # MaE insample
+            mae_insample.append(np.NaN) # MAE insample
             f1_insample.append(f1_score(y_train_and_val_clf.genCL, y_train_and_val_clf.predCL, average='weighted')*100) # f1 score
             # ----------------------------------------------------
             # Metrics outsample
-            mae_outsample.append(np.NaN) # MaE outsample
+            mae_outsample.append(np.NaN) # MAE outsample
             f1_outsample.append(f1_score(y_test_clf.genCL, y_test_clf.predCL, average='weighted')*100) # f1 score
             acc_outsample.append(accuracy_score(y_test_clf.genCL, y_test_clf.predCL)*100) # Accuracy
             # ----------------------------------------------------
@@ -428,19 +400,15 @@ for alpha in alpha_list:
         ct_cv.append(np.mean(ct))
         print(f'Finish: alpha = clf')
 
-#
-
+# summarize results
 temp = pd.DataFrame({
-                    'mae_train': np.round(mae_insample_cv,3), 'mae_test': np.round(mae_outsample_cv,3), 'mae_test_sd': np.round(mae_outsample_cv_std,3),
-                    'acc_train': np.round(acc_insample_cv,2), 'acc_test': np.round(acc_outsample_cv,2), 'acc_test_sd': np.round(acc_outsample_cv_std,2), 
-                    'f1_train': np.round(f1_insample_cv,2), 'f1_test': np.round(f1_outsample_cv,2), 'f1_test_sd': np.round(f1_outsample_cv_std,2), 
-                    'ct': np.round(ct_cv,1)
-                    }) #, index=alpha_list)
+                    'mae_test': np.round(mae_outsample_cv,3), 'mae_test_sd': np.round(mae_outsample_cv_std,3),
+                    'acc_test': np.round(acc_outsample_cv,2), 'acc_test_sd': np.round(acc_outsample_cv_std,2), 
+                    'f1_test': np.round(f1_outsample_cv,2), 'f1_test_sd': np.round(f1_outsample_cv_std,2), 
+                    }, index=alpha_list)
 
-print(temp.T)
+# save results
+temp.T.to_excel(fr'.\res_{data_set}.xlsx')
 
-# %%
-temp.T.to_excel(fr'C:\Users\AdminRBG.SSt\Desktop\2Paper_result_neuAusfuehrung\res_{data_set}.xlsx')
-
-a = pd.DataFrame(dict_hyperparams)
-a.to_excel(fr'C:\Users\AdminRBG.SSt\Desktop\2Paper_result_neuAusfuehrung\params_{data_set}.xlsx')
+params_list = pd.DataFrame(dict_hyperparams)
+params_list.to_excel(fr'.\params_{data_set}.xlsx')

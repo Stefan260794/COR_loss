@@ -1,4 +1,6 @@
-#%%
+# Script for analysis of a varying number of iteration with fixed settings
+
+# packages
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -8,12 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, accuracy_score, f1_score
 
-font = {'size': 8}
-matplotlib.rc('font', **font)
-plt.rcParams.update({'font.family':'Times New Roman', 'text.color' : "black", 'axes.labelcolor' : "black"})
-
-
-#%% model class
+### class
 class LinearRegression:
 
     def __init__(self, lr = 0.001, n_iters=1000, alpha = 1):
@@ -77,12 +74,11 @@ class LinearRegression:
         return y_pred
 
 
-# %%
 # dummy dataset
 sample_size = 1000
 X, y = datasets.make_regression(n_samples=sample_size, n_features=1, noise=20, random_state=4)
 
-#% find gamma dist
+# find gamma dist
 grid_def = [-200,-50,50,150,200]
 grid = [-300,-200,-50,50,150,200,300]
 grid_arr = np.array([grid, np.array(range(1,len(grid)+1)).tolist()]) # , class_names])
@@ -90,12 +86,11 @@ grid_arr = np.array([grid, np.array(range(1,len(grid)+1)).tolist()]) # , class_n
 y_df = pd.DataFrame({'val': y}) # all data
 y_df['trCL'] = (grid_arr[1][np.digitize(y_df.val, grid_arr[0])].astype(int)-1).astype(str)
 
-# -------------
 # gamma of real data
 x_norm = np.linspace(min(grid), max(grid), int(sample_size*1.1))
 param = stats.norm.fit(y_df.val, floc=0); # pdf_fitted = stats.norm.pdf(x_norm, *param)
 
-# new dist gamma
+# new distribution gamma
 mu = 5; sigma=65
 y_norm = stats.norm.pdf(x_norm, mu, sigma)
 # random samples from distribution
@@ -103,7 +98,7 @@ seed_no = 341 # 566
 rng = np.random.default_rng(seed_no)
 y_rs = rng.normal(mu, sigma, size=int(sample_size*1.1))
 
-# add gen-data to true data
+# add generated data to true data
 df = pd.concat([pd.DataFrame(X), y_df], axis=1) # split data together to stratify with trCL and genCL
 df = df.sort_values(by='val').reset_index(drop=True)
 
@@ -111,7 +106,7 @@ geny = y_rs[y_rs > grid_def[0]]
 geny = geny[geny < grid_def[-1]][:len(y)] # reduce sample size to the same size as y and without values out of given x-Grid-range
 geny = np.sort(geny)
 
-# add gen data to dataframe
+# add generated data to dataframe
 df['geny'] = geny
 df['genCL'] = (grid_arr[1][np.digitize(df.geny, grid_arr[0])].astype(int)-1).astype(str)
 
@@ -119,27 +114,19 @@ df['genCL'] = (grid_arr[1][np.digitize(df.geny, grid_arr[0])].astype(int)-1).ast
 df['key'] = df.genCL 
 df.groupby('key').count() # check for class combinations
 
+# Plot
 
-# plt.plot(df.val, df.geny, '-')
-# plt.show()
+# Plot Settings
+font = {'size': 8}
+matplotlib.rc('font', **font)
+plt.rcParams.update({'font.family':'Times New Roman', 'text.color' : "black", 'axes.labelcolor' : "black"})
 
-# # show data
-# fig, (ax1, ax2) = plt.subplots(2)
-# ax1.hist(geny, bins=grid, density=True)
-# ax2.hist(y_df.val, alpha=0.4, density=True)
-# ax2.hist(y_df.val, bins=grid, alpha=0.4, density=True)
-# plt.show()
-
-
-#%%
-plot_true = False
-
-alpha = 0.1 # alpha_list = [1,.9,.8,.7,.6,.5,.4,.3,.2,.1,0]
-lr = 0.1 # lr_list = [.01,.1,.2,.3,.4,.5,.6,.7,.8,.9,1]
+# hyperparameter settings
+alpha = 0.1
+lr = 0.1
 iter_list =  [1,10,50,100,200,300,500,1000,1500,1800,2000,4000]
-# iter_list =  [1,100,300,500] #,4000]
 
-# dicts
+# dictionaries
 dict_mae_def = []; dict_f1_def = []; dict_acc_def = []
 dict_mae = []; dict_f1 = []; dict_acc = []
 
@@ -149,7 +136,7 @@ m_dict_mae = []; m_dict_f1 = []; m_dict_acc = []
 std_dict_mae_def = []; std_dict_f1_def = []
 std_dict_mae = []; std_dict_f1 = []
 
-i = 100
+# looped analysis
 for i in iter_list:
 
     for k in range(3):
@@ -183,7 +170,7 @@ for i in iter_list:
         pred_defaultCL = (grid_arr[1][np.digitize(pred_default, grid_arr[0])].astype(int)-1)
         predCL = (grid_arr[1][np.digitize(pred, grid_arr[0])].astype(int)-1)
         y_trainCL = y_train[:,1].astype(int)
-        y_testCL = y_test[:,1].astype(int) # change y_test class to int
+        y_testCL = y_test[:,1].astype(int)
 
         # Evalmetrics --------------------------------------------------------
         # mae
@@ -211,8 +198,6 @@ for i in iter_list:
     std_dict_mae.append(np.std(dict_mae)); std_dict_f1.append(np.std(dict_f1))
 
 
-
-#%%
 res = pd.DataFrame({'Iteration': iter_list,
                     'MAE (BL)': m_dict_mae_def,
                     'MAE (BL) std': std_dict_mae_def,
@@ -225,17 +210,18 @@ res = pd.DataFrame({'Iteration': iter_list,
                     'Acc (BL)': m_dict_acc_def,
                     'Acc': m_dict_acc})
 
-#%%
-res.to_excel(fr'C:\Users\AdminRBG.SSt\Desktop\2Paper_result_neuAusfuehrung\res_itervar_alpha={alpha}_lr={lr}.xlsx')
+res.to_excel(fr'.\res_varyIteration_alpha={alpha}_lr={lr}.xlsx')
 
 
 alpha = 0.1; lr = 0.8
-res = pd.read_excel(fr'C:\Users\AdminRBG.SSt\Desktop\2Paper_result_neuAusfuehrung\linReg\res_itervar_alpha={alpha}_lr={lr}.xlsx')
-# %%
+# res = pd.read_excel(fr'.\res_varyIteration_alpha={alpha}_lr={lr}.xlsx')
+
 dropAfter = -3
 z = 1.96
 
+# Plot
 fig, (ax1,ax2) = plt.subplots(2)
+
 ax1.plot(res['Iteration'][:dropAfter], res['MAE (BL)'][:dropAfter], 'x', linestyle='-')
 ax1.fill_between(
     res['Iteration'][:dropAfter].ravel(),
@@ -277,9 +263,5 @@ ax2.set_xlabel('# iteration'); ax2.set_ylabel('F1-score')
 plt.suptitle(fr'fixed parameter: $\alpha={alpha}$, $lr={lr}$')
 plt.tight_layout()
 
-# plt.show()
+plt.show()
 
-
-plt.savefig(fr'C:\Users\AdminRBG.SSt\Desktop\2Paper_result_neuAusfuehrung\linReg\plots\GenEx_itervar_alpha={alpha}_lr={lr}.png', dpi=500)
-
-# %%

@@ -1,30 +1,30 @@
-#%%
+# Plots the results of the xgboost regression script
+
+# packages
 import pandas as pd
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
+# read in results from the xgboost regression script
+df = pd.read_excel(fr'.\res_housing.xlsx')
+df = df.iloc[:-1,:]
+df_2 = pd.read_excel(fr'.\res_ames.xlsx')
+df_2 = df_2.iloc[:-1,:]
+
+clf = pd.read_excel(fr'.\res_housing.xlsx')
+clf = clf.iloc[-1,:]
+clf_2 = pd.read_excel(fr'.\res_ames.csv.xlsx')
+clf_2 = clf_2.iloc[-1,:]
+
+# settings
 font = {'size': 8}
 matplotlib.rc('font', **font)
 plt.rcParams.update({'font.family':'Times New Roman', 'text.color' : "black", 'axes.labelcolor' : "black"})
 
-
-
-df = pd.read_excel(r'C:\Users\AdminRBG.SSt\Desktop\paper2_auswertung1_2Versuch.xlsx')
-df = df.iloc[:-1,:]
-df_2 = pd.read_excel(r'C:\Users\AdminRBG.SSt\Desktop\paper2_auswertung1_2Versuch_ames.xlsx')
-df_2 = df_2.iloc[:-1,:]
-
-clf = pd.read_excel(r'C:\Users\AdminRBG.SSt\Desktop\paper2_auswertung1_2Versuch.xlsx')
-clf = clf.iloc[-1,:]
-clf_2 = pd.read_excel(r'C:\Users\AdminRBG.SSt\Desktop\paper2_auswertung1_2Versuch_ames.xlsx')
-clf_2 = clf_2.iloc[-1,:]
-
-
-
+# plot
 fig, ((ax1, ax2), (ax3,ax4)) = plt.subplots(2,2)
 
-#mae
 ax1.plot(df.index, df.mae, linestyle='-', marker='o', markersize=3.5, color='darkorange') # mae bh
 ax1.fill_between(
     df.index.ravel(),
@@ -102,8 +102,4 @@ ax4.set_xlabel(r'$\alpha$ values')
 ax4.set_xlim(0,6)
 
 plt.tight_layout()
-# plt.show()
-
-plt.savefig(fr'C:\Users\AdminRBG.SSt\Desktop\2Paper_result_neuAusfuehrung\plots_xgb\Auswertung_1_2version.png', dpi=500)
-
-
+plt.show()

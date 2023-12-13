@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 
 ### load dataset - Boston Housing
+url = 'https://raw.githubusercontent.com/jbrownlee/Datasets/master/'
 data_set = 'housing.csv'
 dataframe = pd.read_csv(fr'{url}/{data_set}', header=None)
 # split into input (X) and output (y) variables
@@ -38,10 +39,8 @@ y_rs = y_rs[y_rs < 60][:len(y)] # reduce sample size to the same size as y and w
 
 
 ### load dataset - ames housing
-url = 'https://raw.githubusercontent.com/jbrownlee/Datasets/master/'
+ames = pd.read_csv(r'.\Repository\COR_loss_paper\COR_loss\data\AmesHousing.csv')
 
-data_set = 'ames.csv'
-ames = pd.read_csv(r'C:\Users\AdminRBG.SSt\source\repos\amsOS_PPC_FEST\Real_dummyData\AmesHousing.csv')
 ya = ames.SalePrice.copy() / 1000.0
 Xa = ames.drop('SalePrice', axis=1).copy()
 # Remove columns with NaN or Inf values
@@ -117,3 +116,4 @@ ax4.legend(loc="upper right")
 
 plt.tight_layout()
 plt.show()
+
