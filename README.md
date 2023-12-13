@@ -1,4 +1,4 @@
-# Application of COR_loss (Classification optimizing loss)
+# Application of COR loss (Classification Optimizing Regression loss)
 
 This application refers to the research paper: 
 Metric Multi-Task Learning for Regression and Ordinal
